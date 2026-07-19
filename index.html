@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmic Periodic Table — 3D</title>
+<style>
+/* ==========================================================================
+   1. Cosmic Theme & Variables
+   ========================================================================== */
+:root {
+    --bg-main: #090913;
+    --bg-surface: rgba(18, 20, 36, 0.72);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --text-primary: #ffffff;
+    --text-secondary: #b5bdd6;
+
+    --color-solid: #ff72c6;
+    --color-liquid: #ff9b52;
+    --color-gas: #4bc8ff;
+    --color-unknown: #94a3b8;
+
+    --family-alkali: #ff4d4d;
+    --family-alkaline: #ff944d;
+    --family-transition: #ffd84d;
+    --family-post: #43d37d;
+    --family-metalloid: #4fd8ff;
+    --family-reactive: #9f73ff;
+    --family-halogen: #ff67bc;
+    --family-noble: #56a3ff;
+    --family-lanthanide: #d46bff;
+    --family-actinide: #ff5b63;
+
+    --shadow-soft: 0 8px 25px rgba(0, 0, 0, 0.35);
+    --shadow-hover: 0 15px 40px rgba(0, 0, 0, 0.45);
+    --accent-glow: linear-gradient(135deg, #ff7ad9, #9b7bff, #59b7ff);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+    font-family: Inter, "Segoe UI", Roboto, sans-serif;
+    background: #090913;
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding: 40px 20px;
+    position: relative;
+}
+
+#bg-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    display: block;
+}
+
+/* ==========================================================================
+   2. Typography & Header
+   ========================================================================== */
+header { text-align: center; margin-bottom: 45px; position: relative; z-index: 2; }
+
+header h1 {
+    font-size: 3.4rem;
+    font-weight: 800;
+    letter-spacing: -2px;
+    background: linear-gradient(90deg, #ff7ad9, #9b7bff, #59b7ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+header p { margin-top: 10px; color: #bfc7d9; font-size: 1.08rem; }
+
+/* ==========================================================================
+   3. Frosted Controls Container & Slider
+   ========================================================================== */
+.controls-container {
+    position: relative;
+    z-index: 2;
+    width: min(900px, 95%);
+    margin: 0 auto 50px auto;
+    padding: 25px;
+    border-radius: 22px;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+}
+
+.slider-wrapper { width: 100%; max-width: 500px; text-align: center; }
+
+.slider-wrapper label {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 500;
+    margin-bottom: 14px;
+    color: #e2e8f0;
+}
+
+#tempValue { color: #ff72c6; font-weight: 700; }
+#celValue { color: #9b7bff; font-weight: 700; }
+
+input[type="range"] {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    box-shadow: 0 0 15px #9b7bff;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 22px; width: 100%; }
+
+.legend-title {
+    width: 100%; text-align: center; font-size: 0.95rem; font-weight: 700;
+    color: white; margin-top: 10px; margin-bottom: 4px;
+}
+
+.legend-divider { width: 100%; height: 1px; background: rgba(255, 255, 255, 0.08); margin: 8px 0; }
+
+.legend-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+    border-radius: 30px; background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06); font-size: 0.9rem;
+    color: #cbd5e1; transition: 0.25s;
+}
+
+.legend-item:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.08); }
+
+.box { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+/* ==========================================================================
+   4. The 3D Grid Stage & Premium Element Cards
+   ========================================================================== */
+.grid-stage {
+    position: relative;
+    z-index: 2;
+    perspective: 1600px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+#periodic-table-grid {
+    display: grid;
+    grid-template-columns: repeat(18, minmax(64px, 1fr));
+    gap: 8px;
+    transform-style: preserve-3d;
+    transition: transform 0.15s ease-out;
+    will-change: transform;
+}
+
+.element-card {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 10px 8px;
+    height: 84px;
+    cursor: pointer;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transform-style: preserve-3d;
+    transition: box-shadow 0.28s, border-color 0.28s, transform 0.12s ease-out;
+    transform: translateZ(0) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(var(--tz, 0px));
+}
+
+.element-card .state-dot {
+    position: absolute; top: 8px; right: 8px; width: 10px; height: 10px;
+    border-radius: 50%; z-index: 2;
+}
+
+.element-card::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
+    background: var(--family-color, #888); opacity: 0.85;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude; -webkit-mask-composite: xor; pointer-events: none;
+}
+
+.element-card::after {
+    content: ""; position: absolute; left: 0; bottom: 0; width: 100%; height: 4px;
+    background: var(--family-color); box-shadow: 0 0 15px var(--family-color);
+}
+
+.element-card:hover {
+    --tz: 22px;
+    box-shadow:
+        0 0 25px color-mix(in srgb, var(--family-color) 60%, transparent),
+        0 18px 35px rgba(0, 0, 0, 0.45);
+    z-index: 5;
+    border-color: rgba(255,255,255,0.25);
+}
+
+.element-card:active { --tz: 8px; }
+
+.element-card .atomic-num { font-size: 0.72rem; color: #9ca3af; }
+.element-card .symbol { font-size: 1.55rem; font-weight: 800; letter-spacing: -1px; color: white; }
+.element-card .name { font-size: 0.67rem; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.element-card[style*="grid-row: 9"] { margin-top: 24px; }
+
+.solid, .legend-item.solid { color: #ffd3ec !important; text-shadow: 0 0 8px rgba(255, 114, 198, 0.3); }
+.liquid, .legend-item.liquid { color: #ffe0bf !important; text-shadow: 0 0 8px rgba(255, 155, 82, 0.3); }
+.gas, .legend-item.gas { color: #c7efff !important; text-shadow: 0 0 8px rgba(75, 200, 255, 0.3); }
+.unknown, .legend-item.unknown { color: #e5e7eb !important; }
+
+.element-card.solid .symbol, .element-card.solid .name { color: #ffd3ec !important; }
+.element-card.liquid .symbol, .element-card.liquid .name { color: #ffe0bf !important; }
+.element-card.gas .symbol, .element-card.gas .name { color: #c7efff !important; }
+.element-card.unknown .symbol, .element-card.unknown .name { color: #e5e7eb !important; }
+
+.element-card.solid .state-dot { background-color: var(--color-solid) !important; box-shadow: 0 0 8px var(--color-solid); }
+.element-card.liquid .state-dot { background-color: var(--color-liquid) !important; box-shadow: 0 0 8px var(--color-liquid); }
+.element-card.gas .state-dot { background-color: var(--color-gas) !important; box-shadow: 0 0 8px var(--color-gas); }
+.element-card.unknown .state-dot { background-color: var(--color-unknown) !important; }
+
+.alkali-metal           { --family-color: var(--family-alkali); }
+.alkaline-earth-metal   { --family-color: var(--family-alkaline); }
+.transition-metal       { --family-color: var(--family-transition); }
+.post-transition-metal  { --family-color: var(--family-post); }
+.metalloid              { --family-color: var(--family-metalloid); }
+.reactive-nonmetal      { --family-color: var(--family-reactive); }
+.halogen                { --family-color: var(--family-halogen); }
+.noble-gas              { --family-color: var(--family-noble); }
+.lanthanide             { --family-color: var(--family-lanthanide); }
+.actinide               { --family-color: var(--family-actinide); }
+.unknown-family         { --family-color: var(--family-unknown); }
+
+.alkali-bg      { background: var(--family-alkali); }
+.alkaline-bg    { background: var(--family-alkaline); }
+.transition-bg  { background: var(--family-transition); }
+.post-bg        { background: var(--family-post); }
+.metalloid-bg   { background: var(--family-metalloid); }
+.reactive-bg    { background: var(--family-reactive); }
+.halogen-bg     { background: var(--family-halogen); }
+.noble-bg       { background: var(--family-noble); }
+.lanthanide-bg  { background: var(--family-lanthanide); }
+.actinide-bg    { background: var(--family-actinide); }
+
+/* ==========================================================================
+   5. Glassmorphic Modal Overlays + 3D Atom Model
+   ========================================================================== */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(6, 5, 12, 0.6);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; transition: opacity 0.3s ease;
+}
+
+.modal-overlay.hidden { display: none; opacity: 0; pointer-events: none; }
+
+.glass-modal-card {
+    background: rgba(28, 25, 56, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 24px;
+    padding: 30px 36px 36px;
+    width: 92%;
+    max-width: 520px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(192, 132, 252, 0.1);
+    color: #ffffff;
+    position: relative;
+    text-align: center;
+    transform: scale(1);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-overlay.hidden .glass-modal-card { transform: scale(0.9); }
+
+.close-modal-btn {
+    position: absolute; top: 15px; right: 15px;
+    background: rgba(170, 28, 28, 0.88);
+    border: 1px solid var(--border-color);
+    width: 18px; height: 18px; border-radius: 50%;
+    color: var(--text-secondary); font-size: 1.1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; line-height: 0;
+    transition: all 0.2s ease; z-index: 5;
+}
+
+.close-modal-btn:hover { background: rgba(255, 255, 255, 0.15); color: var(--text-primary); transform: rotate(90deg); }
+
+.modal-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 4px; }
+.modal-atomic-num { font-size: 1.1rem; font-weight: 600; color: var(--text-secondary); display: block; }
+.modal-symbol {
+    font-size: 3.4rem; font-weight: 900; letter-spacing: -0.04em;
+    background: var(--accent-glow); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin: 0.15rem 0;
+}
+.modal-name { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+.modal-category {
+    display: inline-block; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #ff72c6; margin-bottom: 10px;
+}
+
+#atom-canvas-wrap {
+    width: 100%;
+    height: 210px;
+    border-radius: 16px;
+    background: radial-gradient(circle at center, rgba(155,123,255,0.10), rgba(0,0,0,0.25));
+    border: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 14px;
+    overflow: hidden;
+    position: relative;
+    touch-action: none;
+    cursor: grab;
+}
+#atom-canvas-wrap:active { cursor: grabbing; }
+#atom-canvas-wrap canvas { display: block; width: 100%; height: 100%; }
+.atom-hint {
+    position: absolute; bottom: 6px; right: 10px; font-size: 0.65rem;
+    color: rgba(255,255,255,0.35); letter-spacing: 0.03em; pointer-events: none;
+}
+
+.modal-divider { border: 0; height: 1px; background: rgba(255, 255, 255, 0.08); margin: 1rem 0; }
+
+.config-container {
+    background: rgba(0, 0, 0, 0.2); padding: 0.85rem; border-radius: 10px;
+    margin-bottom: 1.2rem; border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.config-container h3 {
+    font-size: 0.85rem; margin-block-start: 0; margin-block-end: 0.4rem;
+    text-transform: uppercase; opacity: 0.6; letter-spacing: 0.05em;
+}
+.config-text { font-family: monospace; font-size: 1.05rem; font-weight: bold; color: #c084fc; letter-spacing: 0.06em; }
+
+.stats-grid { display: flex; gap: 1rem; justify-content: space-between; }
+.stat-box {
+    flex: 1; background: rgba(255, 255, 255, 0.03); padding: 0.85rem;
+    border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.06); text-align: center;
+}
+.stat-label { display: block; font-size: 0.8rem; opacity: 0.6; margin-bottom: 0.25rem; }
+.stat-value { font-size: 1rem; font-weight: 600; }
+
+.state-badge {
+    display: inline-block; padding: 0.35rem 1.2rem; border-radius: 20px;
+    font-size: 0.95rem; font-weight: 600; margin-top: 0.5rem; margin-bottom: 0.8rem;
+}
+.state-badge.solid   { background: #3b82f6; color: #ffffff; }
+.state-badge.liquid  { background: #ef4444; color: #ffffff; }
+.state-badge.gas     { background: #10b981; color: #ffffff; }
+.state-badge.unknown { background: #6b7280; color: #ffffff; }
+
+@media (max-width: 1024px) {
+    #periodic-table-grid { overflow-x: auto; padding-bottom: 20px; }
+    .grid-stage { perspective: none; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+
+<header>
+    <h1>Cosmic Elements</h1>
+    <p>Explore the building blocks of the universe — now in 3D</p>
+</header>
+
+<div class="controls-container">
+    <div class="slider-wrapper">
+        <label for="tempSlider">Temperature: <span id="tempValue">298</span> K (<span id="celValue">25</span> °C)</label>
+        <input type="range" id="tempSlider" min="0" max="6000" value="298">
+    </div>
+
+    <div class="legend">
+        <div class="legend-title">Physical States</div>
+        <div class="legend-item solid"><span class="box solid-bg"></span>Solid</div>
+        <div class="legend-item liquid"><span class="box liquid-bg"></span>Liquid</div>
+        <div class="legend-item gas"><span class="box gas-bg"></span>Gas</div>
+        <div class="legend-item unknown"><span class="box unknown-bg"></span>Unknown</div>
+
+        <div class="legend-divider"></div>
+        <div class="legend-title">Element Families</div>
+        <div class="legend-item"><span class="box alkali-bg"></span>Alkali Metal</div>
+        <div class="legend-item"><span class="box alkaline-bg"></span>Alkaline Earth</div>
+        <div class="legend-item"><span class="box transition-bg"></span>Transition Metal</div>
+        <div class="legend-item"><span class="box post-bg"></span>Post-transition</div>
+        <div class="legend-item"><span class="box metalloid-bg"></span>Metalloid</div>
+        <div class="legend-item"><span class="box reactive-bg"></span>Reactive Nonmetal</div>
+        <div class="legend-item"><span class="box halogen-bg"></span>Halogen</div>
+        <div class="legend-item"><span class="box noble-bg"></span>Noble Gas</div>
+        <div class="legend-item"><span class="box lanthanide-bg"></span>Lanthanide</div>
+        <div class="legend-item"><span class="box actinide-bg"></span>Actinide</div>
+    </div>
+</div>
+
+<div class="grid-stage" id="grid-stage">
+    <main id="periodic-table-grid"></main>
+</div>
+
+<div id="detail-modal" class="modal-overlay hidden">
+    <div class="glass-modal-card">
+        <button id="close-btn" class="close-modal-btn">&times;</button>
+
+        <div class="modal-header">
+            <span id="element-number" class="modal-atomic-num">0</span>
+            <h1 id="element-symbol" class="modal-symbol">X</h1>
+            <h2 id="element-name" class="modal-name">Element Name</h2>
+            <span id="element-category" class="modal-category">Category</span>
+            <div id="element-state" class="state-badge">Solid</div>
+        </div>
+
+        <div id="atom-canvas-wrap">
+            <span class="atom-hint">drag to rotate</span>
+        </div>
+
+        <hr class="modal-divider">
+
+        <div class="modal-body">
+            <div class="config-container">
+                <h3>Electron Configuration</h3>
+                <p id="element-config" class="config-text">1s¹</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="stat-label">Melting Point</span>
+                    <span id="stat-melt" class="stat-value">0 K</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Boiling Point</span>
+                    <span id="stat-boil" class="stat-value">0 K</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/**
+ * ============================================================================
+ * PERIODIC TABLE COMPLETE DATASET (118 ELEMENTS)
+ * Includes exact electronic configurations and thermodynamic parameters.
+ * ============================================================================
+ */
+const elementsDataset = [
+  // Period 1
+  { number: 1, symbol: "H", name: "Hydrogen", category: "Reactive Nonmetal", group: 1, period: 1, melt: 14, boil: 20, electronConfig: "1s¹" },
+  { number: 2, symbol: "He", name: "Helium", category: "Noble Gas", group: 18, period: 1, melt: 1, boil: 4, electronConfig: "1s²" },
+
+  // Period 2
+  { number: 3, symbol: "Li", name: "Lithium", category: "Alkali Metal", group: 1, period: 2, melt: 454, boil: 1615, electronConfig: "[He] 2s¹" },
+  { number: 4, symbol: "Be", name: "Beryllium", category: "Alkaline Earth Metal", group: 2, period: 2, melt: 1560, boil: 2742, electronConfig: "[He] 2s²" },
+  { number: 5, symbol: "B", name: "Boron", category: "Metalloid", group: 13, period: 2, melt: 2349, boil: 4200, electronConfig: "[He] 2s² 2p¹" },
+  { number: 6, symbol: "C", name: "Carbon", category: "Reactive Nonmetal", group: 14, period: 2, melt: 3823, boil: 4300, electronConfig: "[He] 2s² 2p²" },
+  { number: 7, symbol: "N", name: "Nitrogen", category: "Reactive Nonmetal", group: 15, period: 2, melt: 63, boil: 77, electronConfig: "[He] 2s² 2p³" },
+  { number: 8, symbol: "O", name: "Oxygen", category: "Reactive Nonmetal", group: 16, period: 2, melt: 54, boil: 90, electronConfig: "[He] 2s² 2p⁴" },
+  { number: 9, symbol: "F", name: "Fluorine", category: "Reactive Nonmetal", group: 17, period: 2, melt: 53, boil: 85, electronConfig: "[He] 2s² 2p⁵" },
+  { number: 10, symbol: "Ne", name: "Neon", category: "Noble Gas", group: 18, period: 2, melt: 24, boil: 27, electronConfig: "[He] 2s² 2p⁶" },
+
+  // Period 3
+  { number: 11, symbol: "Na", name: "Sodium", category: "Alkali Metal", group: 1, period: 3, melt: 371, boil: 1156, electronConfig: "[Ne] 3s¹" },
+  { number: 12, symbol: "Mg", name: "Magnesium", category: "Alkaline Earth Metal", group: 2, period: 3, melt: 923, boil: 1380, electronConfig: "[Ne] 3s²" },
+  { number: 13, symbol: "Al", name: "Aluminium", category: "Post-Transition Metal", group: 13, period: 3, melt: 933, boil: 2792, electronConfig: "[Ne] 3s² 3p¹" },
+  { number: 14, symbol: "Si", name: "Silicon", category: "Metalloid", group: 14, period: 3, melt: 1687, boil: 3538, electronConfig: "[Ne] 3s² 3p²" },
+  { number: 15, symbol: "P", name: "Phosphorus", category: "Reactive Nonmetal", group: 15, period: 3, melt: 317, boil: 554, electronConfig: "[Ne] 3s² 3p³" },
+  { number: 16, symbol: "S", name: "Sulfur", category: "Reactive Nonmetal", group: 16, period: 3, melt: 388, boil: 718, electronConfig: "[Ne] 3s² 3p⁴" },
+  { number: 17, symbol: "Cl", name: "Chlorine", category: "Reactive Nonmetal", group: 17, period: 3, melt: 172, boil: 239, electronConfig: "[Ne] 3s² 3p⁵" },
+  { number: 18, symbol: "Ar", name: "Argon", category: "Noble Gas", group: 18, period: 3, melt: 84, boil: 87, electronConfig: "[Ne] 3s² 3p⁶" },
+
+  // Period 4
+  { number: 19, symbol: "K", name: "Potassium", category: "Alkali Metal", group: 1, period: 4, melt: 337, boil: 1032, electronConfig: "[Ar] 4s¹" },
+  { number: 20, symbol: "Ca", name: "Calcium", category: "Alkaline Earth Metal", group: 2, period: 4, melt: 1115, boil: 1757, electronConfig: "[Ar] 4s²" },
+  { number: 21, symbol: "Sc", name: "Scandium", category: "Transition Metal", group: 3, period: 4, melt: 1814, boil: 3109, electronConfig: "[Ar] 3d¹ 4s²" },
+  { number: 22, symbol: "Ti", name: "Titanium", category: "Transition Metal", group: 4, period: 4, melt: 1941, boil: 3560, electronConfig: "[Ar] 3d² 4s²" },
+  { number: 23, symbol: "V", name: "Vanadium", category: "Transition Metal", group: 5, period: 4, melt: 2183, boil: 3680, electronConfig: "[Ar] 3d³ 4s²" },
+  { number: 24, symbol: "Cr", name: "Chromium", category: "Transition Metal", group: 6, period: 4, melt: 2180, boil: 2944, electronConfig: "[Ar] 3d⁵ 4s¹" },
+  { number: 25, symbol: "Mn", name: "Manganese", category: "Transition Metal", group: 7, period: 4, melt: 1519, boil: 2334, electronConfig: "[Ar] 3d⁵ 4s²" },
+  { number: 26, symbol: "Fe", name: "Iron", category: "Transition Metal", group: 8, period: 4, melt: 1811, boil: 3134, electronConfig: "[Ar] 3d⁶ 4s²" },
+  { number: 27, symbol: "Co", name: "Cobalt", category: "Transition Metal", group: 9, period: 4, melt: 1768, boil: 3200, electronConfig: "[Ar] 3d⁷ 4s²" },
+  { number: 28, symbol: "Ni", name: "Nickel", category: "Transition Metal", group: 10, period: 4, melt: 1728, boil: 3186, electronConfig: "[Ar] 3d⁸ 4s²" },
+  { number: 29, symbol: "Cu", name: "Copper", category: "Transition Metal", group: 11, period: 4, melt: 1358, boil: 2835, electronConfig: "[Ar] 3d¹⁰ 4s¹" },
+  { number: 30, symbol: "Zn", name: "Zinc", category: "Transition Metal", group: 12, period: 4, melt: 693, boil: 1180, electronConfig: "[Ar] 3d¹⁰ 4s²" },
+  { number: 31, symbol: "Ga", name: "Gallium", category: "Post-Transition Metal", group: 13, period: 4, melt: 303, boil: 2673, electronConfig: "[Ar] 3d¹⁰ 4s² 4p¹" },
+  { number: 32, symbol: "Ge", name: "Germanium", category: "Metalloid", group: 14, period: 4, melt: 1211, boil: 3106, electronConfig: "[Ar] 3d¹⁰ 4s² 4p²" },
+  { number: 33, symbol: "As", name: "Arsenic", category: "Metalloid", group: 15, period: 4, melt: 1090, boil: 887, electronConfig: "[Ar] 3d¹⁰ 4s² 4p³" },
+  { number: 34, symbol: "Se", name: "Selenium", category: "Reactive Nonmetal", group: 16, period: 4, melt: 494, boil: 958, electronConfig: "[Ar] 3d¹⁰ 4s² 4p⁴" },
+  { number: 35, symbol: "Br", name: "Bromine", category: "Reactive Nonmetal", group: 17, period: 4, melt: 266, boil: 332, electronConfig: "[Ar] 3d¹⁰ 4s² 4p⁵" },
+  { number: 36, symbol: "Kr", name: "Krypton", category: "Noble Gas", group: 18, period: 4, melt: 116, boil: 120, electronConfig: "[Ar] 3d¹⁰ 4s² 4p⁶" },
+
+  // Period 5
+  { number: 37, symbol: "Rb", name: "Rubidium", category: "Alkali Metal", group: 1, period: 5, melt: 312, boil: 961, electronConfig: "[Kr] 5s¹" },
+  { number: 38, symbol: "Sr", name: "Strontium", category: "Alkaline Earth Metal", group: 2, period: 5, melt: 1050, boil: 1655, electronConfig: "[Kr] 5s²" },
+  { number: 39, symbol: "Y",  name: "Yttrium", category: "Transition Metal", group: 3, period: 5, melt: 1799, boil: 3609, electronConfig: "[Kr] 4d¹ 5s²" },
+  { number: 40, symbol: "Zr", name: "Zirconium", category: "Transition Metal", group: 4, period: 5, melt: 2128, boil: 4682, electronConfig: "[Kr] 4d² 5s²" },
+  { number: 41, symbol: "Nb", name: "Niobium", category: "Transition Metal", group: 5, period: 5, melt: 2750, boil: 5017, electronConfig: "[Kr] 4d⁴ 5s¹" },
+  { number: 42, symbol: "Mo", name: "Molybdenum", category: "Transition Metal", group: 6, period: 5, melt: 2896, boil: 4912, electronConfig: "[Kr] 4d⁵ 5s¹" },
+  { number: 43, symbol: "Tc", name: "Technetium", category: "Transition Metal", group: 7, period: 5, melt: 2430, boil: 4538, electronConfig: "[Kr] 4d⁵ 5s²" },
+  { number: 44, symbol: "Ru", name: "Ruthenium", category: "Transition Metal", group: 8, period: 5, melt: 2607, boil: 4423, electronConfig: "[Kr] 4d⁷ 5s¹" },
+  { number: 45, symbol: "Rh", name: "Rhodium", category: "Transition Metal", group: 9, period: 5, melt: 2237, boil: 3968, electronConfig: "[Kr] 4d⁸ 5s¹" },
+  { number: 46, symbol: "Pd", name: "Palladium", category: "Transition Metal", group: 10, period: 5, melt: 1828, boil: 3236, electronConfig: "[Kr] 4d¹⁰" },
+  { number: 47, symbol: "Ag", name: "Silver", category: "Transition Metal", group: 11, period: 5, melt: 1235, boil: 2435, electronConfig: "[Kr] 4d¹⁰ 5s¹" },
+  { number: 48, symbol: "Cd", name: "Cadmium", category: "Transition Metal", group: 12, period: 5, melt: 594, boil: 1040, electronConfig: "[Kr] 4d¹⁰ 5s²" },
+  { number: 49, symbol: "In", name: "Indium", category: "Post-Transition Metal", group: 13, period: 5, melt: 430, boil: 2345, electronConfig: "[Kr] 4d¹⁰ 5s² 5p¹" },
+  { number: 50, symbol: "Sn", name: "Tin", category: "Post-Transition Metal", group: 14, period: 5, melt: 505, boil: 2875, electronConfig: "[Kr] 4d¹⁰ 5s² 5p²" },
+  { number: 51, symbol: "Sb", name: "Antimony", category: "Metalloid", group: 15, period: 5, melt: 904, boil: 1860, electronConfig: "[Kr] 4d¹⁰ 5s² 5p³" },
+  { number: 52, symbol: "Te", name: "Tellurium", category: "Metalloid", group: 16, period: 5, melt: 730, boil: 1261, electronConfig: "[Kr] 4d¹⁰ 5s² 5p⁴" },
+  { number: 53, symbol: "I",  name: "Iodine", category: "Reactive Nonmetal", group: 17, period: 5, melt: 387, boil: 457, electronConfig: "[Kr] 4d¹⁰ 5s² 5p⁵" },
+  { number: 54, symbol: "Xe", name: "Xenon", category: "Noble Gas", group: 18, period: 5, melt: 161, boil: 165, electronConfig: "[Kr] 4d¹⁰ 5s² 5p⁶" },
+
+  // Period 6
+  { number: 55, symbol: "Cs", name: "Caesium", category: "Alkali Metal", group: 1, period: 6, melt: 302, boil: 944, electronConfig: "[Xe] 6s¹" },
+  { number: 56, symbol: "Ba", name: "Barium", category: "Alkaline Earth Metal", group: 2, period: 6, melt: 1000, boil: 2170, electronConfig: "[Xe] 6s²" },
+  
+  // Lanthanides
+  { number: 57, symbol: "La", name: "Lanthanum", category: "Lanthanide", group: 3, period: 9, melt: 1193, boil: 3737, electronConfig: "[Xe] 5d¹ 6s²" },
+  { number: 58, symbol: "Ce", name: "Cerium", category: "Lanthanide", group: 4, period: 9, melt: 1068, boil: 3716, electronConfig: "[Xe] 4f¹ 5d¹ 6s²" },
+  { number: 59, symbol: "Pr", name: "Praseodymium", category: "Lanthanide", group: 5, period: 9, melt: 1208, boil: 3793, electronConfig: "[Xe] 4f³ 6s²" },
+  { number: 60, symbol: "Nd", name: "Neodymium", category: "Lanthanide", group: 6, period: 9, melt: 1297, boil: 3347, electronConfig: "[Xe] 4f⁴ 6s²" },
+  { number: 61, symbol: "Pm", name: "Promethium", category: "Lanthanide", group: 7, period: 9, melt: 1308, boil: 3273, electronConfig: "[Xe] 4f⁵ 6s²" },
+  { number: 62, symbol: "Sm", name: "Samarium", category: "Lanthanide", group: 8, period: 9, melt: 1345, boil: 2067, electronConfig: "[Xe] 4f⁶ 6s²" },
+  { number: 63, symbol: "Eu", name: "Europium", category: "Lanthanide", group: 9, period: 9, melt: 1099, boil: 1802, electronConfig: "[Xe] 4f⁷ 6s²" },
+  { number: 64, symbol: "Gd", name: "Gadolinium", category: "Lanthanide", group: 10, period: 9, melt: 1585, boil: 3546, electronConfig: "[Xe] 4f⁷ 5d¹ 6s²" },
+  { number: 65, symbol: "Tb", name: "Terbium", category: "Lanthanide", group: 11, period: 9, melt: 1629, boil: 3503, electronConfig: "[Xe] 4f⁹ 6s²" },
+  { number: 66, symbol: "Dy", name: "Dysprosium", category: "Lanthanide", group: 12, period: 9, melt: 1680, boil: 2840, electronConfig: "[Xe] 4f¹⁰ 6s²" },
+  { number: 67, symbol: "Ho", name: "Holmium", category: "Lanthanide", group: 13, period: 9, melt: 1734, boil: 2993, electronConfig: "[Xe] 4f¹¹ 6s²" },
+  { number: 68, symbol: "Er", name: "Erbium", category: "Lanthanide", group: 14, period: 9, melt: 1802, boil: 3141, electronConfig: "[Xe] 4f¹² 6s²" },
+  { number: 69, symbol: "Tm", name: "Thulium", category: "Lanthanide", group: 15, period: 9, melt: 1818, boil: 2223, electronConfig: "[Xe] 4f¹³ 6s²" },
+  { number: 70, symbol: "Yb", name: "Ytterbium", category: "Lanthanide", group: 16, period: 9, melt: 1097, boil: 1469, electronConfig: "[Xe] 4f¹⁴ 6s²" },
+  { number: 71, symbol: "Lu", name: "Lutetium", category: "Lanthanide", group: 17, period: 9, melt: 1925, boil: 3675, electronConfig: "[Xe] 4f¹⁴ 5d¹ 6s²" },
+  
+  // Remaining Period 6
+  { number: 72, symbol: "Hf", name: "Hafnium", category: "Transition Metal", group: 4, period: 6, melt: 2506, boil: 4876, electronConfig: "[Xe] 4f¹⁴ 5d² 6s²" },
+  { number: 73, symbol: "Ta", name: "Tantalum", category: "Transition Metal", group: 5, period: 6, melt: 3290, boil: 5731, electronConfig: "[Xe] 4f¹⁴ 5d³ 6s²" },
+  { number: 74, symbol: "W",  name: "Tungsten", category: "Transition Metal", group: 6, period: 6, melt: 3695, boil: 6203, electronConfig: "[Xe] 4f¹⁴ 5d⁴ 6s²" },
+  { number: 75, symbol: "Re", name: "Rhenium", category: "Transition Metal", group: 7, period: 6, melt: 3459, boil: 5869, electronConfig: "[Xe] 4f¹⁴ 5d⁵ 6s²" },
+  { number: 76, symbol: "Os", name: "Osmium", category: "Transition Metal", group: 8, period: 6, melt: 3306, boil: 5285, electronConfig: "[Xe] 4f¹⁴ 5d⁶ 6s²" },
+  { number: 77, symbol: "Ir", name: "Iridium", category: "Transition Metal", group: 9, period: 6, melt: 2739, boil: 4701, electronConfig: "[Xe] 4f¹⁴ 5d⁷ 6s²" },
+  { number: 78, symbol: "Pt", name: "Platinum", category: "Transition Metal", group: 10, period: 6, melt: 2041, boil: 4098, electronConfig: "[Xe] 4f¹⁴ 5d⁹ 6s¹" },
+  { number: 79, symbol: "Au", name: "Gold", category: "Transition Metal", group: 11, period: 6, melt: 1337, boil: 3129, electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s¹" },
+  { number: 80, symbol: "Hg", name: "Mercury", category: "Transition Metal", group: 12, period: 6, melt: 234,  boil: 630, electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s²" },
+  { number: 81, symbol: "Tl", name: "Thallium", category: "Post-Transition Metal", group: 13, period: 6, melt: 577,  boil: 1746, electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹" },
+  { number: 82, symbol: "Pb", name: "Lead", category: "Post-Transition Metal", group: 14, period: 6, melt: 601,  boil: 2022, electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²" },
+  { number: 83, symbol: "Bi", name: "Bismuth", category: "Post-Transition Metal", group: 15, period: 6, melt: 544,  boil: 1837, electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³" },
+  { number: 84, symbol: "Po", name: "Polonium", category: "Post-Transition Metal", group: 16, period: 6, melt: 527,  boil: 1235, electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴" },
+  { number: 85, symbol: "At", name: "Astatine", category: "Metalloid", group: 17, period: 6, melt: 575, boil: 610, electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵" },
+  { number: 86, symbol: "Rn", name: "Radon", category: "Noble Gas", group: 18, period: 6, melt: 202, boil: 211, electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶" },
+
+  // Period 7
+  { number: 87, symbol: "Fr", name: "Francium", category: "Alkali Metal", group: 1, period: 7, melt: 300, boil: 950, electronConfig: "[Rn] 7s¹" },
+  { number: 88, symbol: "Ra", name: "Radium", category: "Alkaline Earth Metal", group: 2, period: 7, melt: 973, boil: 2010, electronConfig: "[Rn] 7s²" },
+  
+  // Actinides
+  { number: 89, symbol: "Ac", name: "Actinium", category: "Actinide", group: 3, period: 10, melt: 1323, boil: 3471, electronConfig: "[Rn] 6d¹ 7s²" },
+  { number: 90, symbol: "Th", name: "Thorium", category: "Actinide", group: 4, period: 10, melt: 2023, boil: 5061, electronConfig: "[Rn] 6d² 7s²" },
+  { number: 91, symbol: "Pa", name: "Protactinium", category: "Actinide", group: 5, period: 10, melt: 1841, boil: 4300, electronConfig: "[Rn] 5f² 6d¹ 7s²" },
+  { number: 92, symbol: "U",  name: "Uranium", category: "Actinide", group: 6, period: 10, melt: 1405, boil: 4404, electronConfig: "[Rn] 5f³ 6d¹ 7s²" },
+  { number: 93, symbol: "Np", name: "Neptunium", category: "Actinide", group: 7, period: 10, melt: 917,  boil: 4273, electronConfig: "[Rn] 5f⁴ 6d¹ 7s²" },
+  { number: 94, symbol: "Pu", name: "Plutonium", category: "Actinide", group: 8, period: 10, melt: 912,  boil: 3501, electronConfig: "[Rn] 5f⁶ 7s²" },
+  { number: 95, symbol: "Am", name: "Americium", category: "Actinide", group: 9, period: 10, melt: 1449, boil: 2880, electronConfig: "[Rn] 5f⁷ 7s²" },
+  { number: 96, symbol: "Cm", name: "Curium", category: "Actinide", group: 10, period: 10, melt: 1613, boil: 3383, electronConfig: "[Rn] 5f⁷ 6d¹ 7s²" },
+  { number: 97, symbol: "Bk", name: "Berkelium", category: "Actinide", group: 11, period: 10, melt: 1259, boil: 2900, electronConfig: "[Rn] 5f⁹ 7s²" },
+  { number: 98, symbol: "Cf", name: "Californium", category: "Actinide", group: 12, period: 10, melt: 1173, boil: 1743, electronConfig: "[Rn] 5f¹⁰ 7s²" },
+  { number: 99, symbol: "Es", name: "Einsteinium", category: "Actinide", group: 13, period: 10, melt: 1133, boil: 1269, electronConfig: "[Rn] 5f¹¹ 7s²" },
+  { number: 100, symbol: "Fm", name: "Fermium", category: "Actinide", group: 14, period: 10, melt: 1800, boil: null, electronConfig: "[Rn] 5f¹² 7s²" },
+  { number: 101, symbol: "Md", name: "Mendelevium", category: "Actinide", group: 15, period: 10, melt: 1100, boil: null, electronConfig: "[Rn] 5f¹³ 7s²" },
+  { number: 102, symbol: "No", name: "Nobelium", category: "Actinide", group: 16, period: 10, melt: 1100, boil: null, electronConfig: "[Rn] 5f¹⁴ 7s²" },
+  { number: 103, symbol: "Lr", name: "Lawrencium", category: "Actinide", group: 17, period: 10, melt: 1900, boil: null, electronConfig: "[Rn] 5f¹⁴ 7s² 7p¹" },
+  
+  // Remaining Period 7
+  { number: 104, symbol: "Rf", name: "Rutherfordium", category: "Transition Metal", group: 4, period: 7, melt: 2400, boil: null, electronConfig: "[Rn] 5f¹⁴ 6d² 7s²" },
+  { number: 105, symbol: "Db", name: "Dubnium", category: "Transition Metal", group: 5, period: 7, melt: null, boil: null, electronConfig: "[Rn] 5f¹⁴ 6d³ 7s²" },
+  { number: 106, symbol: "Sg", name: "Seaborgium", category: "Transition Metal", group: 6, period: 7, melt: null, boil: null, electronConfig: "[Rn] 5f¹⁴ 6d⁴ 7s²" },
+  { number: 107, symbol: "Bh", name: "Bohrium", category: "Transition Metal", group: 7, period: 7, melt: null, boil: null, electronConfig: "[Rn] 5f¹⁴ 6d⁵ 7s²" },
+  { number: 108, symbol: "Hs", name: "Hassium", category: "Transition Metal", group: 8, period: 7, melt: null, boil: null, electronConfig: "[Rn] 5f¹⁴ 6d⁶ 7s²" },
+  { number: 109, symbol: "Mt", name: "Meitnerium", category: "Unknown", group: 9, period: 7, melt: null, boil: null, electronConfig: "[Rn] 5f¹⁴ 6d⁷ 7s²" },
+  { number: 110, symbol: "Ds", name: "Darmstadtium", category: "Unknown", group: 10, period: 7, melt: null, boil: null, electronConfig: "[Rn] 5f¹⁴ 6d⁸ 7s²" },
+  { number: 111, symbol: "Rg", name: "Roentgenium", category: "Unknown", group: 11, period: 7, melt: null, boil: null, electronConfig: "[Rn] 5f¹⁴ 6d⁹ 7s²" },
+  { number: 112, symbol: "Cn", name: "Copernicium", category: "Transition Metal", group: 12, period: 7, melt: 283, boil: 340, electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s²" },
+  { number: 113, symbol: "Nh", name: "Nihonium", category: "Unknown", group: 13, period: 7, melt: 700, boil: 1400, electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹" },
+  { number: 114, symbol: "Fl", name: "Flerovium", category: "Unknown", group: 14, period: 7, melt: 200, boil: 420, electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²" },
+  { number: 115, symbol: "Mc", name: "Moscovium", category: "Unknown", group: 15, period: 7, melt: 670, boil: 1400, electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³" },
+  { number: 116, symbol: "Lv", name: "Livermorium", category: "Unknown", group: 16, period: 7, melt: 700, boil: 1100, electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴" },
+  { number: 117, symbol: "Ts", name: "Tennessine", category: "Unknown", group: 17, period: 7, melt: 723, boil: 883, electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁵" },
+  { number: 118, symbol: "Og", name: "Oganesson", category: "Unknown", group: 18, period: 7, melt: 325, boil: 350, electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶" }
+];
+</script>
+<script>
+/**
+ * ============================================================================
+ * DOM SELECTORS
+ * ============================================================================
+ */
+const gridContainer = document.getElementById('periodic-table-grid');
+const gridStage = document.getElementById('grid-stage');
+const tempSlider = document.getElementById('tempSlider');
+const tempValueDisplay = document.getElementById('tempValue');
+const celValueDisplay = document.getElementById('celValue');
+const detailModal = document.getElementById('detail-modal');
+const closePanelBtn = document.getElementById('close-btn');
+const atomWrap = document.getElementById('atom-canvas-wrap');
+
+let currentTemp = 298;
+
+/**
+ * ============================================================================
+ * SIMPLIFIED BOHR SHELL MODEL
+ * Distributes electrons into shells for visualization purposes.
+ * ============================================================================
+ */
+function getShellElectrons(atomicNumber) {
+  const capacities = [2, 8, 8, 18, 18, 32, 32];
+  let remaining = atomicNumber;
+  const shells = [];
+  for (const cap of capacities) {
+    if (remaining <= 0) break;
+    const e = Math.min(cap, remaining);
+    shells.push(e);
+    remaining -= e;
+  }
+  return shells;
+}
+
+/**
+ * ============================================================================
+ * TEMPERATURE -> COLOR (used by background particles + glows)
+ * ============================================================================
+ */
+function lerp(a, b, t) { return a + (b - a) * t; }
+function lerpColor(c1, c2, t) {
+  return [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
+}
+function tempToColor(k) {
+  const cold = [90, 140, 255];
+  const mid = [190, 170, 255];
+  const hot = [255, 110, 70];
+  const t = Math.min(Math.max(k, 0), 6000) / 6000;
+  if (t < 0.5) return lerpColor(cold, mid, t / 0.5);
+  return lerpColor(mid, hot, (t - 0.5) / 0.5);
+}
+
+/**
+ * ============================================================================
+ * PERIODIC TABLE CORE RENDER ENGINE
+ * ============================================================================
+ */
+function buildPeriodicTable(currentTemperature) {
+  gridContainer.innerHTML = '';
+
+  elementsDataset.forEach(element => {
+    const card = document.createElement('div');
+    card.classList.add('element-card');
+
+    card.style.gridColumn = element.group;
+    card.style.gridRow = element.period;
+
+    let physicalStateClass = 'unknown';
+
+    if (element.melt !== null && element.boil !== null) {
+      if (currentTemperature < element.melt) {
+        physicalStateClass = 'solid';
+      } else if (currentTemperature >= element.melt && currentTemperature < element.boil) {
+        physicalStateClass = 'liquid';
+      } else if (currentTemperature >= element.boil) {
+        physicalStateClass = 'gas';
+      }
+    } else if (element.melt !== null && currentTemperature < element.melt) {
+      physicalStateClass = 'solid';
+    }
+
+    card.classList.add(physicalStateClass);
+    const categoryClass = element.category.toLowerCase().replace(/\s+/g, '-');
+    card.classList.add(categoryClass);
+
+    card.innerHTML = `
+      <span class="state-dot"></span>
+      <span class="atomic-num">${element.number}</span>
+      <span class="symbol">${element.symbol}</span>
+      <span class="name">${element.name}</span>
+    `;
+
+    card.addEventListener('click', () => revealElementDetails(element, physicalStateClass));
+
+    // Per-card 3D tilt on hover
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width - 0.5;
+      const py = (e.clientY - rect.top) / rect.height - 0.5;
+      card.style.setProperty('--ry', `${px * 22}deg`);
+      card.style.setProperty('--rx', `${-py * 22}deg`);
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.setProperty('--rx', `0deg`);
+      card.style.setProperty('--ry', `0deg`);
+      card.style.removeProperty('--tz');
+    });
+
+    gridContainer.appendChild(card);
+  });
+}
+
+/**
+ * ============================================================================
+ * WHOLE-GRID PARALLAX (mouse-driven floating in 3D space)
+ * ============================================================================
+ */
+(function initGridParallax() {
+  let targetX = 0, targetY = 0, curX = 0, curY = 0;
+
+  window.addEventListener('mousemove', (e) => {
+    const nx = (e.clientX / window.innerWidth) * 2 - 1;
+    const ny = (e.clientY / window.innerHeight) * 2 - 1;
+    targetX = nx;
+    targetY = ny;
+  });
+
+  function animate() {
+    curX = lerp(curX, targetX, 0.06);
+    curY = lerp(curY, targetY, 0.06);
+    gridContainer.style.transform = `rotateX(${-curY * 6}deg) rotateY(${curX * 8}deg)`;
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+/**
+ * ============================================================================
+ * THREE.JS COSMIC PARTICLE BACKGROUND
+ * ============================================================================
+ */
+const CosmicBackground = (function () {
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+  camera.position.z = 420;
+
+  const PARTICLE_COUNT = 1400;
+  const positions = new Float32Array(PARTICLE_COUNT * 3);
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const radius = 300 + Math.random() * 500;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos((Math.random() * 2) - 1);
+    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+    positions[i * 3 + 2] = radius * Math.cos(phi);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  const material = new THREE.PointsMaterial({
+    size: 2.2,
+    color: 0x9b7bff,
+    transparent: true,
+    opacity: 0.85,
+    depthWrite: false,
+  });
+
+  const points = new THREE.Points(geometry, material);
+  scene.add(points);
+
+  // A few larger glowing "nebula" spheres for depth
+  const glowGeo = new THREE.SphereGeometry(1, 12, 12);
+  const nebulae = [];
+  for (let i = 0; i < 3; i++) {
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x9b7bff, transparent: true, opacity: 0.06 });
+    const mesh = new THREE.Mesh(glowGeo, glowMat);
+    const scale = 140 + Math.random() * 100;
+    mesh.scale.set(scale, scale, scale);
+    mesh.position.set((Math.random() - 0.5) * 600, (Math.random() - 0.5) * 400, -200 - Math.random() * 300);
+    scene.add(mesh);
+    nebulae.push(mesh);
+  }
+
+  let mouseX = 0, mouseY = 0;
+  window.addEventListener('mousemove', (e) => {
+    mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+    mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  function setTempColor(k) {
+    const [r, g, b] = tempToColor(k);
+    material.color.setRGB(r / 255, g / 255, b / 255);
+    nebulae.forEach(n => n.material.color.setRGB(r / 255, g / 255, b / 255));
+  }
+  setTempColor(298);
+
+  function animate() {
+    points.rotation.y += 0.0009;
+    points.rotation.x += 0.0002;
+    camera.position.x += (mouseX * 60 - camera.position.x) * 0.02;
+    camera.position.y += (-mouseY * 40 - camera.position.y) * 0.02;
+    camera.lookAt(0, 0, 0);
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  return { setTempColor };
+})();
+
+/**
+ * ============================================================================
+ * THREE.JS 3D ATOM MODEL (rendered inside the detail modal)
+ * ============================================================================
+ */
+const AtomModel = (function () {
+  let renderer, scene, camera, nucleusGroup, electronGroup;
+  let dragging = false, lastX = 0, lastY = 0;
+  let rotY = 0.4, rotX = -0.2;
+  let rafId = null;
+
+  function init() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(50, atomWrap.clientWidth / atomWrap.clientHeight, 0.1, 100);
+    camera.position.z = 13;
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(atomWrap.clientWidth, atomWrap.clientHeight);
+    atomWrap.insertBefore(renderer.domElement, atomWrap.firstChild);
+
+    const light1 = new THREE.PointLight(0xffffff, 1.2);
+    light1.position.set(5, 5, 10);
+    scene.add(light1);
+    scene.add(new THREE.AmbientLight(0x8888ff, 0.6));
+
+    atomWrap.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+    window.addEventListener('pointerup', () => dragging = false);
+    window.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      rotY += (e.clientX - lastX) * 0.008;
+      rotX += (e.clientY - lastY) * 0.008;
+      lastX = e.clientX; lastY = e.clientY;
+    });
+  }
+
+  function clearGroups() {
+    if (nucleusGroup) scene.remove(nucleusGroup);
+    if (electronGroup) scene.remove(electronGroup);
+  }
+
+  function familyColorHex(category) {
+    const map = {
+      'alkali-metal': 0xff4d4d,
+      'alkaline-earth-metal': 0xff944d,
+      'transition-metal': 0xffd84d,
+      'post-transition-metal': 0x43d37d,
+      'metalloid': 0x4fd8ff,
+      'reactive-nonmetal': 0x9f73ff,
+      'halogen': 0xff67bc,
+      'noble-gas': 0x56a3ff,
+      'lanthanide': 0xd46bff,
+      'actinide': 0xff5b63,
+      'unknown': 0x94a3b8,
+    };
+    return map[category.toLowerCase().replace(/\s+/g, '-')] || 0x9b7bff;
+  }
+
+  function build(element) {
+    if (!renderer) init();
+    clearGroups();
+
+    const color = familyColorHex(element.category);
+    const shells = getShellElectrons(element.number);
+
+    // Nucleus
+    nucleusGroup = new THREE.Group();
+    const nucleusGeo = new THREE.IcosahedronGeometry(0.9, 1);
+    const nucleusMat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.4, roughness: 0.35, metalness: 0.2 });
+    nucleusGroup.add(new THREE.Mesh(nucleusGeo, nucleusMat));
+    scene.add(nucleusGroup);
+
+    // Shells + electrons
+    electronGroup = new THREE.Group();
+    const ringMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 });
+    const electronMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.7 });
+    const electronGeo = new THREE.SphereGeometry(0.16, 12, 12);
+
+    shells.forEach((count, shellIndex) => {
+      const radius = 1.8 + shellIndex * 1.15;
+      const tiltX = shellIndex * 0.55;
+      const tiltZ = shellIndex * 0.35;
+
+      // orbit ring
+      const ringPoints = [];
+      const segments = 64;
+      for (let i = 0; i <= segments; i++) {
+        const a = (i / segments) * Math.PI * 2;
+        ringPoints.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
+      }
+      const ringGeo = new THREE.BufferGeometry().setFromPoints(ringPoints);
+      const ring = new THREE.Line(ringGeo, ringMat);
+      ring.rotation.x = tiltX;
+      ring.rotation.z = tiltZ;
+      electronGroup.add(ring);
+
+      // electrons on this shell
+      for (let e = 0; e < count; e++) {
+        const angleOffset = (e / count) * Math.PI * 2;
+        const electron = new THREE.Mesh(electronGeo, electronMat);
+        electron.userData = { radius, tiltX, tiltZ, angleOffset, speed: 0.6 / (shellIndex + 1) };
+        electronGroup.add(electron);
+      }
+    });
+
+    scene.add(electronGroup);
+  }
+
+  function animate(time) {
+    rafId = requestAnimationFrame(animate);
+    if (!scene) return;
+
+    nucleusGroup.rotation.y += 0.01;
+    electronGroup.children.forEach(child => {
+      if (child.userData && child.userData.radius) {
+        const { radius, tiltX, tiltZ, angleOffset, speed } = child.userData;
+        const a = angleOffset + time * 0.001 * speed;
+        const x = Math.cos(a) * radius;
+        const z = Math.sin(a) * radius;
+        const y = 0;
+        // apply shell tilt manually
+        const cosX = Math.cos(tiltX), sinX = Math.sin(tiltX);
+        const y2 = y * cosX - z * sinX;
+        const z2 = y * sinX + z * cosX;
+        const cosZ = Math.cos(tiltZ), sinZ = Math.sin(tiltZ);
+        const x3 = x * cosZ - y2 * sinZ;
+        const y3 = x * sinZ + y2 * cosZ;
+        child.position.set(x3, y3, z2);
+      }
+    });
+
+    const group = scene;
+    group.rotation.y = rotY;
+    group.rotation.x = rotX;
+
+    renderer.render(scene, camera);
+  }
+
+  function start() {
+    if (rafId) cancelAnimationFrame(rafId);
+    animate(0);
+  }
+
+  function stop() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+
+  function resize() {
+    if (!renderer) return;
+    camera.aspect = atomWrap.clientWidth / atomWrap.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(atomWrap.clientWidth, atomWrap.clientHeight);
+  }
+  window.addEventListener('resize', resize);
+
+  return { build, start, stop };
+})();
+
+/**
+ * ============================================================================
+ * MODAL INTERACTION HANDLERS
+ * ============================================================================
+ */
+function revealElementDetails(element, state) {
+  document.getElementById('element-number').textContent = element.number;
+  document.getElementById('element-symbol').textContent = element.symbol;
+  document.getElementById('element-name').textContent = element.name;
+  document.getElementById('element-category').textContent = element.category;
+  document.getElementById('element-config').textContent = element.electronConfig || 'N/A';
+  document.getElementById('stat-melt').textContent = element.melt ? `${element.melt} K` : 'Theoretical / Unknown';
+  document.getElementById('stat-boil').textContent = element.boil ? `${element.boil} K` : 'Theoretical / Unknown';
+
+  const stateBadge = document.getElementById('element-state');
+  if (stateBadge) {
+    stateBadge.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+    stateBadge.className = `state-badge ${state}`;
+  }
+
+  detailModal.classList.remove('hidden');
+  AtomModel.build(element);
+  AtomModel.start();
+}
+
+function closeDetailModal() {
+  detailModal.classList.add('hidden');
+  AtomModel.stop();
+}
+
+/**
+ * ============================================================================
+ * GLOBAL EVENTS & INITIALIZATION
+ * ============================================================================
+ */
+tempSlider.addEventListener('input', (event) => {
+  const k = parseInt(event.target.value, 10);
+  currentTemp = k;
+  tempValueDisplay.textContent = k;
+  celValueDisplay.textContent = Math.round(k - 273.15);
+  buildPeriodicTable(k);
+  CosmicBackground.setTempColor(k);
+});
+
+closePanelBtn.addEventListener('click', closeDetailModal);
+detailModal.addEventListener('click', (event) => {
+  if (event.target === detailModal) closeDetailModal();
+});
+
+buildPeriodicTable(298);
+
+</script>
+</body>
+</html>
