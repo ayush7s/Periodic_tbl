@@ -209,16 +209,22 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
     background: var(--family-color); box-shadow: 0 0 15px var(--family-color);
 }
 
-.element-card:hover {
-    --tz: 22px;
-    box-shadow:
-        0 0 25px color-mix(in srgb, var(--family-color) 60%, transparent),
-        0 18px 35px rgba(0, 0, 0, 0.45);
-    z-index: 5;
-    border-color: rgba(255,255,255,0.25);
+@media (hover: hover) and (pointer: fine) {
+    .element-card:hover {
+        --tz: 22px;
+        box-shadow:
+            0 0 25px color-mix(in srgb, var(--family-color) 60%, transparent),
+            0 18px 35px rgba(0, 0, 0, 0.45);
+        z-index: 5;
+        border-color: rgba(255,255,255,0.25);
+    }
 }
 
-.element-card:active { --tz: 8px; }
+.element-card:active {
+    --tz: 8px;
+    box-shadow: 0 0 20px color-mix(in srgb, var(--family-color) 50%, transparent);
+    border-color: rgba(255,255,255,0.25);
+}
 
 .element-card .atomic-num { font-size: 0.72rem; color: #9ca3af; }
 .element-card .symbol { font-size: 1.55rem; font-weight: 800; letter-spacing: -1px; color: white; }
@@ -372,6 +378,37 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
 @media (max-width: 1024px) {
     #periodic-table-grid { overflow-x: auto; padding-bottom: 20px; }
     .grid-stage { perspective: none; }
+}
+
+@media (max-width: 700px), (pointer: coarse) {
+    body { padding: 20px 10px; }
+    header h1 { font-size: 2.1rem; letter-spacing: -1px; }
+    header p { font-size: 0.9rem; }
+
+    .grid-stage { perspective: none; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #periodic-table-grid {
+        transform: none !important;
+        transition: none;
+        grid-template-columns: repeat(18, minmax(42px, 1fr));
+        gap: 5px;
+        width: max-content;
+        margin: 0 auto;
+    }
+    .element-card {
+        height: 58px;
+        padding: 6px 5px;
+        border-radius: 10px;
+        transform: none !important;
+        transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .element-card .symbol { font-size: 1.05rem; }
+    .element-card .name { font-size: 0.5rem; }
+    .element-card .atomic-num { font-size: 0.55rem; }
+
+    .glass-modal-card { padding: 22px 18px 26px; width: 94%; }
+    .modal-symbol { font-size: 2.6rem; }
+    .modal-name { font-size: 1.3rem; }
+    #atom-canvas-wrap { height: 160px; }
 }
 </style>
 </head>
@@ -620,6 +657,9 @@ const atomWrap = document.getElementById('atom-canvas-wrap');
 
 let currentTemp = 298;
 
+const IS_FINE_POINTER = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+const IS_SMALL_SCREEN = window.innerWidth < 700 || window.matchMedia('(pointer: coarse)').matches;
+
 /**
  * ============================================================================
  * SIMPLIFIED BOHR SHELL MODEL
@@ -699,19 +739,21 @@ function buildPeriodicTable(currentTemperature) {
 
     card.addEventListener('click', () => revealElementDetails(element, physicalStateClass));
 
-    // Per-card 3D tilt on hover
-    card.addEventListener('mousemove', (e) => {
-      const rect = card.getBoundingClientRect();
-      const px = (e.clientX - rect.left) / rect.width - 0.5;
-      const py = (e.clientY - rect.top) / rect.height - 0.5;
-      card.style.setProperty('--ry', `${px * 22}deg`);
-      card.style.setProperty('--rx', `${-py * 22}deg`);
-    });
-    card.addEventListener('mouseleave', () => {
-      card.style.setProperty('--rx', `0deg`);
-      card.style.setProperty('--ry', `0deg`);
-      card.style.removeProperty('--tz');
-    });
+    // Per-card 3D tilt on hover (fine pointers only — avoids stuck tilt/lift on tap)
+    if (IS_FINE_POINTER) {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width - 0.5;
+        const py = (e.clientY - rect.top) / rect.height - 0.5;
+        card.style.setProperty('--ry', `${px * 22}deg`);
+        card.style.setProperty('--rx', `${-py * 22}deg`);
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.setProperty('--rx', `0deg`);
+        card.style.setProperty('--ry', `0deg`);
+        card.style.removeProperty('--tz');
+      });
+    }
 
     gridContainer.appendChild(card);
   });
@@ -723,6 +765,7 @@ function buildPeriodicTable(currentTemperature) {
  * ============================================================================
  */
 (function initGridParallax() {
+  if (!IS_FINE_POINTER) return;
   let targetX = 0, targetY = 0, curX = 0, curY = 0;
 
   window.addEventListener('mousemove', (e) => {
@@ -748,15 +791,15 @@ function buildPeriodicTable(currentTemperature) {
  */
 const CosmicBackground = (function () {
   const canvas = document.getElementById('bg-canvas');
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !IS_SMALL_SCREEN });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_SMALL_SCREEN ? 1.5 : 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
   camera.position.z = 420;
 
-  const PARTICLE_COUNT = 1400;
+  const PARTICLE_COUNT = IS_SMALL_SCREEN ? 450 : 1400;
   const positions = new Float32Array(PARTICLE_COUNT * 3);
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const radius = 300 + Math.random() * 500;
@@ -886,6 +929,17 @@ const AtomModel = (function () {
 
   function build(element) {
     if (!renderer) init();
+
+    // Always re-measure and re-apply size on every open. On some mobile
+    // browsers the very first open can read a 0×0 container before layout
+    // settles, which corrupts the camera projection permanently if never
+    // re-applied. Re-syncing here on every build() call fixes that.
+    const w = atomWrap.clientWidth || 300;
+    const h = atomWrap.clientHeight || 200;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+
     clearGroups();
 
     const color = familyColorHex(element.category);
@@ -967,6 +1021,10 @@ const AtomModel = (function () {
   function start() {
     if (rafId) cancelAnimationFrame(rafId);
     animate(0);
+    // Extra safety: re-sync size one frame later in case layout wasn't
+    // fully settled the instant the modal became visible (seen on some
+    // mobile browsers).
+    requestAnimationFrame(resize);
   }
 
   function stop() {
